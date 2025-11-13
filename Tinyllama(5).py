@@ -14,9 +14,9 @@ HF_API_KEY = os.getenv("HF_API_KEY")
 if HF_API_KEY is None:
     st.warning("⚠️ Please set your Hugging Face API key as an environment variable named 'HF_API_KEY'.")
 else:
-    API_URL = "https://api-inference.huggingface.co/models/AinzDerrick/tinyllama-demo"
+    #  Updated API endpoint
+    API_URL = "https://router.huggingface.co/hf-inference/models/AinzDerrick/tinyllama-demo"
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-
     def query(payload):
         response = requests.post(API_URL, headers=headers, json=payload)
         if response.status_code == 200:
