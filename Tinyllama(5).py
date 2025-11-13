@@ -1,44 +1,40 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
 import streamlit as st
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
+import requests
+import os
 
-st.title("🦙 TinyLLaMA Chatbot")
-st.write("A lightweight LLM demo you can run on Streamlit Cloud or locally.")
+st.title("🦙 TinyLLaMA Chatbot (API Version)")
+st.write("Uses the Hugging Face Inference API instead of local model loading.")
 
-@st.cache_resource
-def load_model():
-    # Point directly to the subfolder containing the model files
-    model_name = "AinzDerrick/tinyllama-demo"
-    
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-    low_cpu_mem_usage=True
-)
-    return tokenizer, model
+# Get your Hugging Face API key from environment variable
+HF_API_KEY = os.getenv("HF_API_KEY")
 
-tokenizer, model = load_model()
+if HF_API_KEY is None:
+    st.warning("⚠️ Please set your Hugging Face API key as an environment variable named 'HF_API_KEY'.")
+else:
+    API_URL = "https://api-inference.huggingface.co/models/AinzDerrick/tinyllama-demo"
+    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
 
-prompt = st.text_area("💭 Your message:", "Hello, TinyLLaMA!")
+    def query(payload):
+        response = requests.post(API_URL, headers=headers, json=payload)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": f"Request failed with status code {response.status_code}: {response.text}"}
 
-if st.button("Generate Response"):
-    with st.spinner("Thinking..."):
-        inputs = tokenizer(prompt, return_tensors="pt")
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=200,
-            do_sample=True,
-            top_p=0.9,
-            temperature=0.7
-        )
-        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    st.write("### 🤖 TinyLLaMA says:")
-    st.write(response)
+    prompt = st.text_area("💭 Your message:", "Hello TinyLLaMA!")
 
+    if st.button("Generate"):
+        with st.spinner("Thinking..."):
+            output = query({"inputs": prompt})
+
+            # Handle possible errors or malformed responses
+            if isinstance(output, list) and "generated_text" in output[0]:
+                st.write("### 🤖 TinyLLaMA says:")
+                st.write(output[0]["generated_text"])
+            elif "error" in output:
+                st.error(output["error"])
+            else:
+                st.write(output)
